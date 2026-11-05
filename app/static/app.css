@@ -90,6 +90,11 @@ input:focus, textarea:focus { outline: 2px solid #bcd9ee; border-color: var(--br
 .yes { color: var(--ok); font-weight: 700; } .no { color: #c0c6d0; }
 .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 0 0 .8rem; }
 .toolbar .grow { flex: 1; }
+.reg-table td { padding: .3rem .5rem; }
+.reg-table td.num { width: 2.5rem; color: var(--muted); }
+.reg-table th:nth-child(2) { width: 30%; }
+.reg-table th:last-child { width: 5.5rem; }
+.reg-table input { padding: .35rem .55rem; min-width: 8rem; }
 label.inline { display: inline-flex; align-items: center; gap: .35rem; font-size: .9em; }
 @media (max-width: 640px) {
   .card { padding: 1rem; } .grid-2 { grid-template-columns: 1fr; } .intro li { grid-template-columns: 1fr; gap: 0; }

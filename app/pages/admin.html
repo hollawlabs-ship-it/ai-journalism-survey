@@ -51,19 +51,29 @@
     <p class="hint" style="margin:.6rem 0 0">ZIP 에는 제출한 응답의 Word 파일(서명 포함)과, 답변을 한 표로 모은 <b>응답요약.csv</b>(지급 정보 제외)가 들어 있습니다.</p>
   </section>
 
-  <div class="grid-2" style="gap:1.2rem;align-items:start">
-    <section class="card">
-      <h2>자문인 등록</h2>
-      <p class="hint" style="margin-top:0">한 줄에 한 명씩 이름을 적어 주십시오. 쉼표 뒤에 메모(소속 등)를 붙일 수 있습니다. 등록하면 사람마다 개인 링크가 만들어집니다.</p>
-      <textarea id="add-text" rows="6" style="min-height:8em" placeholder="홍길동, ○○일보 사회부&#10;김기자, △△방송"></textarea>
-      <div class="row"><button type="button" class="btn btn-primary" id="btn-add">등록</button></div>
-    </section>
-    <section class="card">
-      <h2>지급 정보 삭제</h2>
-      <p class="hint" style="margin-top:0">자문비 지급을 마친 뒤 모든 응답의 연락처·계좌번호·주민등록번호를 지웁니다. 답변과 서명은 남습니다. 되돌릴 수 없으니 필요한 파일을 먼저 내려받아 두십시오.</p>
-      <button type="button" class="btn btn-danger-outline" id="btn-purge">지급 정보 모두 삭제</button>
-    </section>
-  </div>
+  <section class="card">
+    <h2>자문인 등록</h2>
+    <p class="hint" style="margin-top:0">이름을 적고 <b>등록</b>을 누르면 사람마다 개인 링크가 만들어집니다. 이름이 빈 줄은 건너뜁니다.
+      엑셀에서 이름(과 메모) 열을 복사해 첫 칸에 붙여 넣으면 여러 줄에 한꺼번에 들어갑니다.</p>
+    <div class="table-wrap">
+      <table class="table reg-table">
+        <thead><tr><th class="c">#</th><th>이름 <span class="req">*</span></th><th>메모 (소속·직위 등)</th><th class="c">줄 삭제</th></tr></thead>
+        <tbody id="reg-rows"></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:.8rem">
+      <button type="button" class="btn" id="btn-reg-more">+ 줄 추가</button>
+      <button type="button" class="btn" id="btn-reg-clear">모두 비우기</button>
+      <span class="hint" id="reg-count" style="margin:0;flex:1"></span>
+      <button type="button" class="btn btn-primary" id="btn-add">등록</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>지급 정보 삭제</h2>
+    <p class="hint" style="margin-top:0">자문비 지급을 마친 뒤 모든 응답의 연락처·계좌번호·주민등록번호를 지웁니다. 답변과 서명은 남습니다. 되돌릴 수 없으니 필요한 파일을 먼저 내려받아 두십시오.</p>
+    <button type="button" class="btn btn-danger-outline" id="btn-purge">지급 정보 모두 삭제</button>
+  </section>
 </main>
 <div id="toast" role="status"></div>
 
@@ -191,16 +201,89 @@
     catch (e) { toast(e.message); }
   }
 
+  // ── 자문인 등록표 ──
+  const REG_ROWS = 15;
+  const regBody = $("reg-rows");
+
+  function regRow(label = "", note = "") {
+    const tr = el("tr");
+    tr.append(el("td", "c num"));
+    const nameTd = el("td"), noteTd = el("td"), delTd = el("td", "c");
+    const name = el("input"); name.type = "text"; name.maxLength = 60; name.value = label; name.className = "reg-name";
+    name.setAttribute("aria-label", "이름");
+    const memo = el("input"); memo.type = "text"; memo.maxLength = 200; memo.value = note; memo.className = "reg-note";
+    memo.setAttribute("aria-label", "메모");
+    const del = el("button", "btn btn-sm btn-danger-outline", "삭제"); del.type = "button";
+    del.addEventListener("click", () => {
+      tr.remove();
+      if (!regBody.children.length) regBody.append(regRow());
+      regRefresh();
+    });
+    name.addEventListener("paste", (ev) => pasteMany(ev, tr));
+    name.addEventListener("input", regRefresh);
+    nameTd.append(name); noteTd.append(memo); delTd.append(del);
+    tr.append(nameTd, noteTd, delTd);
+    return tr;
+  }
+
+  function regRefresh() {
+    [...regBody.children].forEach((tr, i) => {
+      tr.firstChild.textContent = String(i + 1);
+      tr.querySelector(".reg-name").placeholder = i ? "" : "예: 홍길동";
+      tr.querySelector(".reg-note").placeholder = i ? "" : "예: ○○일보 사회부 차장";
+    });
+    const n = [...regBody.querySelectorAll(".reg-name")].filter((x) => x.value.trim()).length;
+    $("reg-count").textContent = `${regBody.children.length}줄 중 이름 ${n}명`;
+  }
+
+  function regReset(n = REG_ROWS) {
+    regBody.textContent = "";
+    for (let i = 0; i < n; i++) regBody.append(regRow());
+    regRefresh();
+  }
+
+  // 엑셀·메모장에서 여러 줄을 붙여 넣으면 줄마다 나눠 넣는다(탭 또는 쉼표 뒤는 메모).
+  function pasteMany(ev, startTr) {
+    const text = (ev.clipboardData || window.clipboardData).getData("text");
+    const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
+    if (lines.length < 2 && !/\t/.test(text)) return;   // 한 줄은 평소대로
+    ev.preventDefault();
+    let tr = startTr;
+    for (const line of lines) {
+      const [label, ...rest] = line.includes("\t") ? line.split("\t") : line.split(",");
+      if (!tr) { tr = regRow(); regBody.append(tr); }
+      tr.querySelector(".reg-name").value = label.trim();
+      tr.querySelector(".reg-note").value = rest.join(line.includes("\t") ? " " : ",").trim();
+      tr = tr.nextElementSibling;
+    }
+    regRefresh();
+  }
+
+  $("btn-reg-more").addEventListener("click", () => {
+    const tr = regRow(); regBody.append(tr); regRefresh(); tr.querySelector("input").focus();
+  });
+  $("btn-reg-clear").addEventListener("click", () => {
+    if ([...regBody.querySelectorAll("input")].some((x) => x.value.trim()) && !confirm("입력한 내용을 모두 지울까요?")) return;
+    regReset();
+  });
+
   $("btn-add").addEventListener("click", async () => {
-    const text = $("add-text").value;
-    if (!text.trim()) { toast("등록할 이름을 입력해 주십시오."); return; }
+    const items = [...regBody.children]
+      .map((tr) => ({ label: tr.querySelector(".reg-name").value.trim(), note: tr.querySelector(".reg-note").value.trim() }))
+      .filter((it) => it.label);
+    if (!items.length) { toast("등록할 이름을 입력해 주십시오."); return; }
+    const btn = $("btn-add");
+    btn.disabled = true;
     try {
-      const added = await call("POST", "/api/admin/respondents", { text });
-      $("add-text").value = "";
-      toast(`${added.length}명을 등록했습니다.`);
+      const added = await call("POST", "/api/admin/respondents", { items });
+      regReset();
+      toast(`${added.length}명을 등록했습니다. 위 응답 현황에서 링크를 복사할 수 있습니다.`);
       load();
     } catch (e) { toast(e.message); }
+    finally { btn.disabled = false; }
   });
+
+  regReset();
 
   $("btn-copy-all").addEventListener("click", async () => {
     if (!list.length) { toast("등록한 자문인이 없습니다."); return; }

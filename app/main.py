@@ -326,9 +326,14 @@ def admin_list(request: Request):
 
 @app.post("/api/admin/respondents", dependencies=[Depends(require_admin)])
 def admin_add(request: Request, payload: dict = Body(...)):
+    pairs = []
+    items = payload.get("items")
+    if isinstance(items, list):   # 등록표: [{"label": 이름, "note": 메모}, ...]
+        pairs = [(str(it.get("label", "")), str(it.get("note", ""))) for it in items[:200] if isinstance(it, dict)]
+    else:                         # 예전 방식: 한 줄에 "이름, 메모"
+        pairs = [line.partition(",")[::2] for line in str(payload.get("text", "")).splitlines()]
     added = []
-    for line in str(payload.get("text", "")).splitlines():
-        label, _, note = line.partition(",")
+    for label, note in pairs:
         label, note = clean_text(label)[:60], clean_text(note)[:200]
         if label:
             added.append(store.add(label, note))
