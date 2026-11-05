@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'">
+<meta name="robots" content="noindex">
+<title>관리자 콘솔 · 자문의견 요청서</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <img src="/static/logo.png" alt="한국언론학회">
+  <span class="t">자문의견 요청서 · 관리자 콘솔</span>
+  <a href="/admin/logout">로그아웃</a>
+</header>
+
+<main class="container wide">
+  <div class="page-title" style="margin-bottom:1rem">
+    <h1 style="font-size:1.4rem;margin:0" id="title"></h1>
+    <div class="hint" id="subtitle" style="font-size:.95em"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-total">0</div><div class="l">등록한 자문인</div></div>
+    <div class="stat ok"><div class="n" id="s-done">0</div><div class="l">제출 완료</div></div>
+    <div class="stat warn"><div class="n" id="s-draft">0</div><div class="l">작성 중</div></div>
+    <div class="stat"><div class="n" id="s-new">0</div><div class="l">아직 시작 안 함</div></div>
+  </div>
+
+  <section class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;border:0;padding:0;font-size:1.1rem;color:var(--ink)" class="grow">응답 현황</h2>
+      <label class="inline"><input type="checkbox" id="inc-drafts"> 작성 중인 응답도 포함</label>
+      <button type="button" class="btn btn-primary" id="btn-zip">한꺼번에 내려받기 (ZIP)</button>
+      <button type="button" class="btn" id="btn-copy-all">모든 링크 복사</button>
+      <button type="button" class="btn" id="btn-refresh">새로고침</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="c">#</th><th>자문인</th><th>상태</th><th class="c">답변</th><th class="c">서명</th>
+            <th class="c">지급 정보</th><th>마지막 저장</th><th>제출</th><th>개인 링크</th><th class="r">관리</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="empty" hidden style="text-align:center;margin:1.2rem 0 .4rem">아직 등록한 자문인이 없습니다. 아래에서 이름을 등록해 주십시오.</p>
+    <p class="hint" style="margin:.6rem 0 0">ZIP 에는 제출한 응답의 Word 파일(서명 포함)과, 답변을 한 표로 모은 <b>응답요약.csv</b>(지급 정보 제외)가 들어 있습니다.</p>
+  </section>
+
+  <div class="grid-2" style="gap:1.2rem;align-items:start">
+    <section class="card">
+      <h2>자문인 등록</h2>
+      <p class="hint" style="margin-top:0">한 줄에 한 명씩 이름을 적어 주십시오. 쉼표 뒤에 메모(소속 등)를 붙일 수 있습니다. 등록하면 사람마다 개인 링크가 만들어집니다.</p>
+      <textarea id="add-text" rows="6" style="min-height:8em" placeholder="홍길동, ○○일보 사회부&#10;김기자, △△방송"></textarea>
+      <div class="row"><button type="button" class="btn btn-primary" id="btn-add">등록</button></div>
+    </section>
+    <section class="card">
+      <h2>지급 정보 삭제</h2>
+      <p class="hint" style="margin-top:0">자문비 지급을 마친 뒤 모든 응답의 연락처·계좌번호·주민등록번호를 지웁니다. 답변과 서명은 남습니다. 되돌릴 수 없으니 필요한 파일을 먼저 내려받아 두십시오.</p>
+      <button type="button" class="btn btn-danger-outline" id="btn-purge">지급 정보 모두 삭제</button>
+    </section>
+  </div>
+</main>
+<div id="toast" role="status"></div>
+
+<script type="application/json" id="boot">__BOOT_JSON__</script>
+<script>
+"use strict";
+(() => {
+  const BOOT = JSON.parse(document.getElementById("boot").textContent);
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  $("title").textContent = BOOT.title;
+  $("subtitle").textContent = BOOT.subtitle;
+
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+  function when(iso) {
+    if (!iso) return "";
+    const d = new Date(iso), p = (n) => String(n).padStart(2, "0");
+    return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  async function call(method, url, body) {
+    const res = await fetch(url, {
+      method, headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined, cache: "no-store",
+    });
+    if (res.status === 401) { location.reload(); throw new Error("다시 로그인해 주십시오."); }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.detail) || `서버 오류(${res.status})`);
+    return data;
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch (e) {
+      const ta = el("textarea"); ta.value = text; document.body.append(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove(); return ok;
+    }
+  }
+
+  let list = [];
+  const STATUS = { new: ["시작 안 함", ""], draft: ["작성 중", "warn"], submitted: ["제출 완료", "ok"] };
+
+  function render() {
+    const tb = $("rows");
+    tb.textContent = "";
+    const count = (s) => list.filter((r) => r.status === s).length;
+    $("s-total").textContent = list.length;
+    $("s-done").textContent = count("submitted");
+    $("s-draft").textContent = count("draft");
+    $("s-new").textContent = count("new");
+    $("empty").hidden = list.length > 0;
+
+    list.forEach((r, i) => {
+      const tr = el("tr");
+      tr.append(el("td", "c", String(i + 1)));
+
+      const who = el("td", "wrap");
+      who.append(el("div", "", r.label));
+      const subs = [];
+      if (r.name && r.name !== r.label) subs.push(`작성 이름: ${r.name}`);
+      if (r.note) subs.push(r.note);
+      if (subs.length) who.append(el("div", "sub-t", subs.join(" · ")));
+      tr.append(who);
+
+      const [st, cls] = STATUS[r.status] || [r.status, ""];
+      const stTd = el("td");
+      stTd.append(el("span", `badge ${cls}`, st));
+      if (r.status === "new" && r.openedAt) stTd.append(el("div", "sub-t", `열어 봄 ${when(r.openedAt)}`));
+      tr.append(stTd);
+
+      tr.append(el("td", "c", `${r.answered} / ${BOOT.answerCount}`));
+      tr.append(el("td", `c ${r.signature ? "yes" : "no"}`, r.signature ? "✓" : "—"));
+      tr.append(el("td", `c ${r.payment ? "yes" : "no"}`, r.payment ? "✓" : "—"));
+      tr.append(el("td", "", when(r.updatedAt)));
+      tr.append(el("td", "", when(r.submittedAt)));
+
+      const linkTd = el("td");
+      const cp = el("button", "btn btn-sm", "링크 복사");
+      cp.type = "button";
+      cp.addEventListener("click", async () => toast((await copy(r.link)) ? `${r.label} 님 링크를 복사했습니다.` : "복사하지 못했습니다."));
+      const open = el("a", "btn btn-sm", "열기");
+      open.href = r.link; open.target = "_blank"; open.rel = "noopener noreferrer";
+      open.title = "자문인 화면 미리보기(여기서 입력하면 실제로 저장됩니다)";
+      linkTd.append(cp, document.createTextNode(" "), open);
+      tr.append(linkTd);
+
+      const act = el("td", "r");
+      const dl = el("a", "btn btn-sm", "Word");
+      dl.href = `/admin/docx/${r.id}`; dl.title = "이 응답을 Word 파일로 내려받기";
+      if (r.status === "new" && !r.updatedAt) { dl.removeAttribute("href"); dl.setAttribute("aria-disabled", "true"); dl.style.opacity = .4; dl.style.pointerEvents = "none"; }
+      const ed = el("button", "btn btn-sm", "수정");
+      ed.type = "button";
+      ed.addEventListener("click", async () => {
+        const label = prompt("등록 이름", r.label);
+        if (label === null) return;
+        const note = prompt("메모(소속 등)", r.note || "");
+        if (note === null) return;
+        try { await call("PATCH", `/api/admin/respondents/${r.id}`, { label, note }); load(); }
+        catch (e) { toast(e.message); }
+      });
+      const del = el("button", "btn btn-sm btn-danger-outline", "삭제");
+      del.type = "button";
+      del.addEventListener("click", async () => {
+        const extra = r.status === "new" ? "" : "\n작성한 응답과 서명도 함께 지워지며 되돌릴 수 없습니다.";
+        if (!confirm(`${r.label} 님을 목록에서 삭제할까요?${extra}`)) return;
+        try { await call("DELETE", `/api/admin/respondents/${r.id}`); toast("삭제했습니다."); load(); }
+        catch (e) { toast(e.message); }
+      });
+      act.append(dl, document.createTextNode(" "), ed, document.createTextNode(" "), del);
+      tr.append(act);
+      tb.append(tr);
+    });
+  }
+
+  async function load() {
+    try { list = await call("GET", "/api/admin/respondents"); render(); }
+    catch (e) { toast(e.message); }
+  }
+
+  $("btn-add").addEventListener("click", async () => {
+    const text = $("add-text").value;
+    if (!text.trim()) { toast("등록할 이름을 입력해 주십시오."); return; }
+    try {
+      const added = await call("POST", "/api/admin/respondents", { text });
+      $("add-text").value = "";
+      toast(`${added.length}명을 등록했습니다.`);
+      load();
+    } catch (e) { toast(e.message); }
+  });
+
+  $("btn-copy-all").addEventListener("click", async () => {
+    if (!list.length) { toast("등록한 자문인이 없습니다."); return; }
+    const text = list.map((r) => `${r.label}\t${r.link}`).join("\n");
+    toast((await copy(text)) ? `${list.length}명의 이름과 링크를 복사했습니다(엑셀에 붙여 넣을 수 있습니다).` : "복사하지 못했습니다.");
+  });
+
+  $("btn-zip").addEventListener("click", async () => {
+    const inc = $("inc-drafts").checked;
+    const n = list.filter((r) => r.status === "submitted" || (inc && r.status === "draft")).length;
+    if (!n) { toast(inc ? "내려받을 응답이 없습니다." : "제출 완료된 응답이 없습니다. '작성 중인 응답도 포함'을 켜면 작성 중인 것도 받을 수 있습니다."); return; }
+    location.href = `/admin/zip?include_drafts=${inc ? 1 : 0}`;
+    toast(`${n}명의 응답을 묶어 내려받습니다.`);
+  });
+
+  $("btn-refresh").addEventListener("click", () => { load(); toast("새로고침했습니다."); });
+
+  $("btn-purge").addEventListener("click", async () => {
+    if (!confirm("모든 응답의 연락처·계좌번호·주민등록번호를 삭제합니다. 되돌릴 수 없습니다. 계속할까요?")) return;
+    if (prompt("확인을 위해 '삭제'라고 입력해 주십시오.") !== "삭제") { toast("취소했습니다."); return; }
+    try { const r = await call("POST", "/api/admin/purge-payment"); toast(`${r.cleared}명의 지급 정보를 삭제했습니다.`); load(); }
+    catch (e) { toast(e.message); }
+  });
+
+  load();
+  setInterval(() => { if (document.visibilityState === "visible") load(); }, 60000);
+})();
+</script>
+</body>
+</html>

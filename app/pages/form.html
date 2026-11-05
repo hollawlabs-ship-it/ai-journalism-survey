@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>__TITLE__</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <img src="/static/logo.png" alt="한국언론학회">
+  <span class="t" id="bar-title"></span>
+</header>
+
+<main class="container">
+  <div class="hero">
+    <h1 id="doc-title"></h1>
+    <p id="doc-subtitle"></p>
+  </div>
+
+  <div id="loading" class="alert">불러오는 중입니다…</div>
+  <div id="load-error" class="alert error" hidden></div>
+
+  <!-- 제출 완료 화면 -->
+  <section class="card done-card" id="done" hidden>
+    <div class="mark">✓</div>
+    <h2 style="color:var(--ink);border:0;padding:0;margin:0 0 .4rem">제출되었습니다</h2>
+    <p id="done-time"></p>
+    <p>응답해 주셔서 진심으로 감사드립니다. 이 창은 닫으셔도 됩니다.</p>
+    <p class="hint">내용을 고치려면 아래 버튼을 누른 뒤 다시 <b>완료</b>를 눌러 주십시오.</p>
+    <div class="row" style="justify-content:center;margin-top:1rem">
+      <button type="button" class="btn" id="btn-reopen">수정하기</button>
+    </div>
+  </section>
+
+  <div id="editor" hidden>
+    <div class="alert">
+      입력한 내용은 자동으로 저장되며, 같은 링크로 다시 들어와 이어서 쓸 수 있습니다.
+      모두 작성하셨으면 맨 아래 <b>완료</b>를 눌러 주십시오.
+      연락처·계좌번호·주민등록번호와 서명은 암호화해 보관하고 자문비 지급 후 삭제합니다.
+    </div>
+
+    <section class="card">
+      <dl class="meta" id="meta"></dl>
+      <ul class="intro" id="intro"></ul>
+    </section>
+
+    <form id="form" autocomplete="off" novalidate>
+      <section class="card">
+        <h2>자문인 인적사항</h2>
+        <div class="field">
+          <label for="name">성명 <span class="req">*</span></label>
+          <input type="text" id="name" name="name" maxlength="60">
+        </div>
+        <div class="field">
+          <label for="org">소속 회사 / 담당 업무 및 직급</label>
+          <input type="text" id="org" name="org" maxlength="200" placeholder="예: ○○일보 / 사회부 / 차장">
+        </div>
+        <div class="field">
+          <span class="label">언론사 근무 연수 <small>(타사 근무 포함 총합)</small></span>
+          <div class="career">
+            <input type="number" id="years" name="years" min="0" max="60" inputmode="numeric" aria-label="근무 연수(년)"> 년
+            <input type="number" id="months" name="months" min="0" max="11" inputmode="numeric" aria-label="근무 연수(개월)"> 개월
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">후배 기자 지도 또는 데스킹 경험</span>
+          <div class="options" data-check="desk"></div>
+        </div>
+        <div class="field">
+          <span class="label">생성형 AI 사용 경험</span>
+          <div class="options" data-check="aiuse"></div>
+        </div>
+        <div class="field">
+          <span class="label">생성형 AI 사용 빈도</span>
+          <div class="options" data-check="freq"></div>
+        </div>
+      </section>
+
+      <div id="sections"></div>
+
+      <p class="closing" id="closing"></p>
+
+      <section class="card">
+        <h2 id="receipt-title"></h2>
+        <div class="receipt-head">
+          <div class="amount" id="receipt-amount"></div>
+          <div id="receipt-purpose"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="r_name">영수인 <span class="req">*</span> <small>(성명을 따라 채워집니다)</small></label>
+            <input type="text" id="r_name" name="r_name" maxlength="60">
+          </div>
+          <div class="field">
+            <label for="r_org">소속</label>
+            <input type="text" id="r_org" name="r_org" maxlength="200">
+          </div>
+          <div class="field">
+            <label for="r_tel">연락처 <span class="req">*</span></label>
+            <input type="tel" id="r_tel" name="r_tel" maxlength="40" placeholder="010-0000-0000">
+            <div class="hint" data-masked="r_tel" hidden></div>
+          </div>
+          <div class="field">
+            <label for="r_bank">은행 / 계좌번호 <span class="req">*</span></label>
+            <input type="text" id="r_bank" name="r_bank" maxlength="120" placeholder="예: ○○은행 000-00-000000">
+            <div class="hint" data-masked="r_bank" hidden></div>
+          </div>
+          <div class="field">
+            <label for="r_rrn">주민등록번호 <span class="req">*</span></label>
+            <input type="text" id="r_rrn" name="r_rrn" inputmode="numeric" placeholder="000000-0000000" maxlength="14">
+            <div class="hint" data-masked="r_rrn" hidden></div>
+          </div>
+          <div class="field">
+            <label for="date">작성일 <span class="req">*</span></label>
+            <input type="date" id="date" name="date">
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:.4rem">
+          <span class="label">서명 <span class="req">*</span> <small>(영수증의 (인) 자리에 들어갑니다)</small></span>
+          <div class="sig" id="sig">
+            <div class="sig-current" id="sig-current" hidden>
+              <img id="sig-img" alt="저장된 서명">
+              <div>
+                <div class="hint" style="margin:0 0 .4rem">저장된 서명입니다.</div>
+                <button type="button" class="btn btn-sm" id="sig-redo">다시 서명하기</button>
+              </div>
+            </div>
+            <div id="sig-edit">
+              <div class="tabs" role="tablist">
+                <button type="button" class="btn btn-sm" role="tab" aria-selected="true" data-tab="draw">화면에 서명</button>
+                <button type="button" class="btn btn-sm" role="tab" aria-selected="false" data-tab="upload">이미지 파일 올리기</button>
+              </div>
+              <div data-panel="draw">
+                <div class="pad-wrap" id="pad-wrap">
+                  <canvas id="pad" aria-label="서명 입력란"></canvas>
+                  <div class="ph" id="pad-ph">여기에 마우스나 손가락으로 서명해 주십시오</div>
+                </div>
+                <div class="row">
+                  <button type="button" class="btn btn-sm" id="pad-clear">지우기</button>
+                  <button type="button" class="btn btn-sm" id="sig-cancel" hidden>취소</button>
+                </div>
+              </div>
+              <div data-panel="upload" hidden>
+                <input type="file" id="sig-file" accept="image/png,image/jpeg,image/webp">
+                <div class="hint">흰 종이에 서명한 사진이나 서명 이미지(PNG·JPG, 3MB 이하)를 올려 주십시오. 바탕은 자동으로 투명하게 처리됩니다.</div>
+                <div class="sig-current" style="margin-top:.6rem" id="upload-preview" hidden>
+                  <img id="upload-img" alt="올린 서명">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="receipt-to" id="receipt-to"></p>
+        <p class="note" id="receipt-note" style="margin:0"></p>
+      </section>
+    </form>
+  </div>
+</main>
+
+<div class="actionbar" id="actionbar" hidden>
+  <div class="inner">
+    <div class="status"><span id="progress"></span><br><span id="saved"></span></div>
+    <button type="button" class="btn" id="btn-save">임시저장</button>
+    <button type="button" class="btn btn-primary btn-lg" id="btn-submit">완료</button>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script type="application/json" id="boot">__BOOT_JSON__</script>
+<script>
+"use strict";
+(() => {
+  const DATA = JSON.parse(document.getElementById("boot").textContent);
+  const API = `/api/r/${encodeURIComponent(DATA.token)}`;
+  const SENSITIVE = ["r_tel", "r_bank", "r_rrn"];
+  const $ = (id) => document.getElementById(id);
+  const form = $("form");
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 3200);
+  }
+  function hhmm(iso) {
+    const d = iso ? new Date(iso) : new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  function fullTime(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${hhmm(iso)}`;
+  }
+  function today() {
+    const d = new Date(), p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  // ── 화면 구성 ────────────────────────────────────────────────
+  $("bar-title").textContent = DATA.title;
+  $("doc-title").textContent = DATA.title;
+  $("doc-subtitle").textContent = DATA.subtitle;
+  for (const [k, val] of DATA.meta) $("meta").append(el("dt", "", k), el("dd", "", val));
+  for (const [label, text] of DATA.intro) {
+    const li = el("li", label ? "" : "plain");
+    if (label) li.append(el("b", "", label), el("span", "", text)); else li.textContent = text;
+    $("intro").append(li);
+  }
+  for (const c of DATA.checks) {
+    const box = document.querySelector(`[data-check="${c.key}"]`);
+    c.options.forEach((opt, i) => {
+      const lab = el("label"), inp = el("input");
+      inp.type = "radio"; inp.name = c.key; inp.value = String(i);
+      lab.append(inp, document.createTextNode(opt));
+      box.append(lab);
+    });
+  }
+  for (const s of DATA.sections) {
+    const card = el("section", "card");
+    card.append(el("h2", "", s.title));
+    for (const it of s.items) {
+      if (it.type === "sub") card.append(el("div", "sub", it.text));
+      else if (it.type === "note") card.append(el("p", "note", it.text));
+      else {
+        const q = el("div", "q"), ta = el("textarea"), count = el("div", "count");
+        ta.id = ta.name = it.key; ta.rows = 6; ta.maxLength = 30000;
+        ta.setAttribute("aria-label", it.title || s.title);
+        if (it.title) q.append(el("h3", "", it.title));
+        for (const g of it.guide) q.append(el("p", "guide", g));
+        q.append(ta, count);
+        card.append(q);
+      }
+    }
+    $("sections").append(card);
+  }
+  $("closing").textContent = DATA.closing;
+  $("receipt-title").textContent = DATA.receipt.title;
+  $("receipt-amount").textContent = DATA.receipt.amount;
+  for (const line of DATA.receipt.purpose) $("receipt-purpose").append(el("p", "", line));
+  $("receipt-to").textContent = DATA.receipt.to;
+  $("receipt-note").textContent = DATA.receiptNote;
+
+  // ── 값 ────────────────────────────────────────────────────
+  const textKeys = ["name", "org", "years", "months", ...DATA.answerKeys, "r_name", "r_org", "r_tel", "r_bank", "r_rrn", "date"];
+  let masked = {};
+  function readValues() {
+    const v = {};
+    for (const k of textKeys) v[k] = form.elements[k].value;
+    for (const c of DATA.checks) {
+      const picked = form.querySelector(`input[name="${c.key}"]:checked`);
+      v[c.key] = picked ? +picked.value : null;
+    }
+    return v;
+  }
+  function writeValues(v) {
+    for (const k of textKeys) if (v[k] != null && !SENSITIVE.includes(k)) form.elements[k].value = v[k];
+    for (const c of DATA.checks) {
+      form.querySelectorAll(`input[name="${c.key}"]`).forEach((i) => { i.checked = String(v[c.key]) === i.value; });
+    }
+  }
+  function showMasked() {
+    for (const k of SENSITIVE) {
+      const hint = document.querySelector(`[data-masked="${k}"]`), inp = form.elements[k];
+      const has = !!masked[k] && !inp.value;
+      hint.hidden = !masked[k];
+      hint.textContent = masked[k] ? `저장됨: ${masked[k]} (바꾸려면 새로 입력)` : "";
+      inp.placeholder = has ? "저장된 값이 있습니다" : inp.dataset.ph;
+    }
+  }
+  SENSITIVE.forEach((k) => { form.elements[k].dataset.ph = form.elements[k].placeholder; });
+
+  function grow(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + 2 + "px"; }
+  function refresh() {
+    let done = 0;
+    for (const k of DATA.answerKeys) {
+      const ta = form.elements[k], n = ta.value.trim().length;
+      if (n) done++;
+      ta.nextElementSibling.textContent = n ? `${n.toLocaleString()}자` : "";
+    }
+    $("progress").innerHTML = `답변 작성 <b>${done}</b> / ${DATA.answerKeys.length}`;
+  }
+
+  // ── 서명 ──────────────────────────────────────────────────
+  const pad = $("pad"), ctx = pad.getContext("2d");
+  let storedSig = null;     // 서버에 저장된 서명(data URL)
+  let sigChange = null;     // null: 변화 없음, data URL: 새 서명
+  let padInk = false, drawing = false, last = null, uploadData = null, tab = "draw";
+
+  function sizePad() {
+    const r = pad.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    pad.width = Math.round(r.width * dpr); pad.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = ctx.lineJoin = "round"; ctx.strokeStyle = "#111"; ctx.lineWidth = 2.6;
+    padInk = false; $("pad-ph").hidden = false;
+  }
+  function clearPad() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, pad.width, pad.height); ctx.restore(); padInk = false; $("pad-ph").hidden = false; }
+  function pt(e) { const r = pad.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  pad.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    drawing = true; last = pt(e);
+    ctx.beginPath(); ctx.arc(last.x, last.y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fillStyle = "#111"; ctx.fill();
+    padInk = true; $("pad-ph").hidden = true;
+  });
+  pad.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    const p = pt(e);
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p;
+  });
+  const endStroke = () => {
+    if (!drawing) return;
+    drawing = false;
+    sigChange = pad.toDataURL("image/png");
+    schedule();
+  };
+  pad.addEventListener("pointerup", endStroke);
+  pad.addEventListener("pointercancel", endStroke);
+  $("pad-clear").addEventListener("click", () => { clearPad(); if (tab === "draw") sigChange = null; });
+
+  function setTab(t) {
+    tab = t;
+    document.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+    document.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== t; });
+    if (t === "draw") { requestAnimationFrame(sizePad); sigChange = null; }
+    else sigChange = uploadData;
+  }
+  document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+  $("sig-file").addEventListener("change", () => {
+    const f = $("sig-file").files[0];
+    if (!f) return;
+    if (f.size > 3 * 1024 * 1024) { toast("3MB 이하의 이미지를 올려 주십시오."); $("sig-file").value = ""; return; }
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      uploadData = c.toDataURL("image/png");
+      $("upload-img").src = uploadData; $("upload-preview").hidden = false;
+      sigChange = uploadData;
+      schedule();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast("이미지를 읽지 못했습니다. PNG 또는 JPG 파일을 올려 주십시오."); };
+    img.src = url;
+  });
+
+  function showSig(editing) {
+    $("sig-current").hidden = editing || !storedSig;
+    $("sig-edit").hidden = !(editing || !storedSig);
+    $("sig-cancel").hidden = !storedSig;
+    if (storedSig) $("sig-img").src = storedSig;
+    if (!$("sig-edit").hidden) { setTab(tab); }
+  }
+  $("sig-redo").addEventListener("click", () => { uploadData = null; $("upload-preview").hidden = true; $("sig-file").value = ""; showSig(true); });
+  $("sig-cancel").addEventListener("click", () => { sigChange = null; clearPad(); showSig(false); });
+  window.addEventListener("resize", () => { if (!padInk && !$("sig-edit").hidden) sizePad(); });
+
+  // ── 서버 저장 ──────────────────────────────────────────────
+  let dirty = false, saving = null, timer = 0, editing = false;
+  function setSaved(text, err) {
+    const s = $("saved");
+    s.textContent = text; s.className = err ? "err" : "";
+  }
+  async function call(method, url, body) {
+    const res = await fetch(url, {
+      method, headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined, cache: "no-store",
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.detail) || `서버 오류(${res.status})`);
+    return data;
+  }
+  function payload() {
+    const p = { values: readValues() };
+    if (sigChange) p.signature = sigChange;
+    return p;
+  }
+  function applyState(st, fromAutosave) {
+    masked = st.masked || {};
+    for (const k of SENSITIVE) form.elements[k].value = "";
+    showMasked();
+    if (st.signature !== undefined) {
+      const changed = st.signature !== storedSig;
+      storedSig = st.signature;
+      // 자동 저장 때는 서명란을 그대로 둬서 서명하는 도중에 화면이 바뀌지 않게 한다.
+      if (changed && !fromAutosave) { sigChange = null; clearPad(); uploadData = null; $("sig-file").value = ""; $("upload-preview").hidden = true; showSig(false); }
+      if (fromAutosave) $("sig-cancel").hidden = true;
+    }
+  }
+  async function save(quiet) {
+    if (saving) await saving.catch(() => {});
+    if (!dirty && !sigChange) return true;
+    clearTimeout(timer);
+    const p = payload(), hadSig = !!sigChange;
+    dirty = false;
+    setSaved("저장 중…");
+    saving = call("PUT", API, p);
+    try {
+      const st = await saving;
+      // 저장하는 사이 입력한 지급 정보는 남겨 둔다.
+      const typed = SENSITIVE.filter((k) => form.elements[k].value && form.elements[k].value !== p.values[k]);
+      const keep = Object.fromEntries(typed.map((k) => [k, form.elements[k].value]));
+      if (hadSig && sigChange === p.signature) sigChange = null;
+      applyState(st, true);
+      for (const [k, v] of Object.entries(keep)) form.elements[k].value = v;
+      showMasked();
+      setSaved(`저장됨 ${hhmm(st.updatedAt)}`);
+      if (!quiet) toast("저장했습니다.");
+      return true;
+    } catch (e) {
+      dirty = true;
+      setSaved(`저장하지 못했습니다: ${e.message}`, true);
+      if (!quiet) toast(e.message);
+      return false;
+    } finally { saving = null; }
+  }
+  function schedule() {
+    if (!editing) return;
+    dirty = true;
+    setSaved("저장 대기 중…");
+    clearTimeout(timer); timer = setTimeout(() => save(true), 1500);
+  }
+
+  let receiptNameEdited = false;
+  form.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.id === "pad" || t.id === "sig-file") return;
+    if (t.id === "r_name") receiptNameEdited = t.value !== "";
+    if (t.id === "name" && !receiptNameEdited) $("r_name").value = t.value;
+    if (t.id === "r_rrn") {
+      const digits = t.value.replace(/\D/g, "").slice(0, 13);
+      t.value = digits.length > 6 ? digits.slice(0, 6) + "-" + digits.slice(6) : digits;
+    }
+    t.classList.remove("bad");
+    if (t.tagName === "TEXTAREA") grow(t);
+    if (SENSITIVE.includes(t.id)) showMasked();
+    refresh();
+    schedule();
+  });
+  form.addEventListener("change", (e) => { if (e.target.type === "radio" || e.target.type === "date") schedule(); });
+  form.addEventListener("submit", (e) => e.preventDefault());
+  window.addEventListener("beforeunload", (e) => { if (editing && (dirty || sigChange || saving)) { save(true); e.preventDefault(); e.returnValue = ""; } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && editing && (dirty || sigChange)) save(true); });
+
+  $("btn-save").addEventListener("click", () => save(false));
+
+  function checkRequired() {
+    const v = readValues(), missing = [];
+    const need = [["name", "성명"], ["r_name", "영수인"], ["r_tel", "연락처"], ["r_bank", "은행 / 계좌번호"], ["r_rrn", "주민등록번호"], ["date", "작성일"]];
+    for (const [k, label] of need) {
+      if (!String(v[k]).trim() && !(SENSITIVE.includes(k) && masked[k])) {
+        missing.push(label); form.elements[k].classList.add("bad");
+      }
+    }
+    if (v.r_rrn && !/^\d{6}-?\d{7}$/.test(v.r_rrn)) { missing.push("주민등록번호 13자리"); form.elements.r_rrn.classList.add("bad"); }
+    if (!storedSig && !sigChange) { missing.push("서명"); $("sig").classList.add("bad"); } else $("sig").classList.remove("bad");
+    return missing;
+  }
+
+  $("btn-submit").addEventListener("click", async () => {
+    const missing = checkRequired();
+    if (missing.length) {
+      toast(`다음 항목을 입력해 주십시오: ${missing.join(", ")}`);
+      const first = form.querySelector(".bad") || $("sig");
+      first.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    const blank = DATA.answerKeys.filter((k) => !form.elements[k].value.trim()).length;
+    const msg = blank
+      ? `비어 있는 답변란이 ${blank}개 있습니다(경력 구간에 해당하지 않는 문항은 비워 두셔도 됩니다).\n이대로 제출할까요?`
+      : "작성한 내용으로 제출할까요?";
+    if (!confirm(msg)) return;
+    const btn = $("btn-submit");
+    btn.disabled = true;
+    if (saving) await saving.catch(() => {});
+    clearTimeout(timer);
+    try {
+      const st = await call("POST", `${API}/submit`, payload());
+      dirty = false;
+      applyState(st);
+      showDone(st);
+    } catch (e) {
+      toast(e.message);
+      setSaved(`제출하지 못했습니다: ${e.message}`, true);
+    } finally { btn.disabled = false; }
+  });
+
+  function showDone(st) {
+    editing = false;
+    $("editor").hidden = true; $("actionbar").hidden = true;
+    $("done").hidden = false;
+    $("done-time").textContent = st.submittedAt ? `${fullTime(st.submittedAt)} 제출` : "";
+    window.scrollTo({ top: 0 });
+  }
+  function showEditor() {
+    $("done").hidden = true; $("editor").hidden = false; $("actionbar").hidden = false;
+    editing = true;
+    form.querySelectorAll("textarea").forEach(grow);
+    showSig(false);
+    refresh();
+  }
+  $("btn-reopen").addEventListener("click", async () => {
+    try {
+      const st = await call("POST", `${API}/reopen`);
+      applyState(st);
+      showEditor();
+      setSaved("수정 중입니다. 다 고치면 완료를 눌러 주십시오.");
+      window.scrollTo({ top: 0 });
+    } catch (e) { toast(e.message); }
+  });
+
+  // ── 시작 ───────────────────────────────────────────────────
+  (async () => {
+    try {
+      const st = await call("GET", API);
+      $("loading").hidden = true;
+      writeValues(st.values || {});
+      receiptNameEdited = !!(st.values.r_name && st.values.r_name !== st.values.name);
+      if (!$("r_name").value) $("r_name").value = $("name").value;
+      if (!$("date").value) $("date").value = today();
+      storedSig = st.signature || null;
+      applyState(st);
+      if (st.status === "submitted") showDone(st);
+      else {
+        showEditor();
+        if (st.updatedAt) setSaved(`마지막 저장 ${fullTime(st.updatedAt)}`);
+      }
+    } catch (e) {
+      $("loading").hidden = true;
+      $("load-error").hidden = false;
+      $("load-error").textContent = `불러오지 못했습니다: ${e.message} 잠시 뒤 새로고침해 주십시오.`;
+    }
+  })();
+})();
+</script>
+</body>
+</html>

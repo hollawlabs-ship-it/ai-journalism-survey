@@ -1,0 +1,23 @@
+# Render.com 블루프린트 — https://render.com/deploy?repo=<이 저장소 URL>
+services:
+  - type: web
+    name: ai-journalism-advisory
+    runtime: docker
+    plan: starter          # 디스크(영구 저장)는 유료 플랜에서만 지원. free 로 바꾸면 재배포 때 응답이 사라짐
+    region: singapore
+    healthCheckPath: /healthz
+    envVars:
+      - key: ADVISORY_ADMIN_PASSWORD
+        sync: false          # 배포할 때 직접 입력 (관리자 콘솔 비밀번호)
+      - key: ADVISORY_SECRET
+        generateValue: true  # 관리자 로그인 쿠키 서명용
+      - key: ADVISORY_ENC_KEY
+        generateValue: true  # 지급 정보·서명 암호화 키. 바꾸면 기존 암호화 자료를 못 읽음
+      - key: ADVISORY_DATA
+        value: /data
+      - key: PORT
+        value: "8768"
+    disk:
+      name: advisory-data
+      mountPath: /data
+      sizeGB: 1

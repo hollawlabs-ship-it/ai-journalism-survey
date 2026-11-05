@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>관리자 로그인 · 자문의견 요청서</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <img src="/static/logo.png" alt="한국언론학회">
+  <span class="t">자문의견 요청서 · 관리자</span>
+</header>
+<main class="container">
+  <form class="card narrow" method="post" action="/admin/login">
+    <h2>관리자 로그인</h2>
+    <p class="alert error" style="margin:0 0 1rem" data-err>__ERROR__</p>
+    <div class="field">
+      <label for="password">비밀번호</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" autofocus required>
+    </div>
+    <button class="btn btn-primary" type="submit" style="width:100%">로그인</button>
+  </form>
+</main>
+<script>
+  const e = document.querySelector("[data-err]");
+  if (!e.textContent.trim()) e.hidden = true;
+</script>
+</body>
+</html>
