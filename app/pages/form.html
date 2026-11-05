@@ -400,7 +400,7 @@
   }
   async function save(quiet) {
     if (saving) await saving.catch(() => {});
-    if (!dirty && !sigChange) return true;
+    if (quiet && !dirty && !sigChange) return true;   // 버튼으로 누른 저장은 바뀐 게 없어도 저장한다
     clearTimeout(timer);
     const p = payload(), hadSig = !!sigChange;
     dirty = false;
@@ -454,6 +454,20 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && editing && (dirty || sigChange)) save(true); });
 
   $("btn-save").addEventListener("click", () => save(false));
+  // 섹션 끝마다 임시저장 버튼
+  form.querySelectorAll("section.card").forEach((card) => {
+    const row = el("div", "row section-save");
+    const b = el("button", "btn btn-sm", "임시저장하기");
+    b.type = "button";
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      const ok = await save(false);
+      b.disabled = false;
+      if (ok) { b.textContent = "저장했습니다 ✓"; setTimeout(() => { b.textContent = "임시저장하기"; }, 2000); }
+    });
+    row.append(el("span", "hint", "입력한 내용은 자동으로도 저장됩니다."), b);
+    card.append(row);
+  });
 
   function checkRequired() {
     const v = readValues(), missing = [];
