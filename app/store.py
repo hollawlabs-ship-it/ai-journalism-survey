@@ -164,11 +164,23 @@ def get(rid: int) -> dict | None:
         return _run("SELECT * FROM respondents WHERE id = ?", (rid,), "one")
 
 
+# 개인 링크 코드: 헷갈리는 글자(0·o, 1·l·i)를 뺀 소문자·숫자 31종 10자 → 약 8×10^14 가지
+TOKEN_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz"
+TOKEN_LEN = 10
+
+
+def new_token() -> str:
+    return "".join(secrets.choice(TOKEN_ALPHABET) for _ in range(TOKEN_LEN))
+
+
 def add(label: str, note: str = "") -> dict:
     with _lock:
+        token = new_token()
+        while _run("SELECT 1 AS x FROM respondents WHERE token = ?", (token,), "one"):
+            token = new_token()
         return _run(
             "INSERT INTO respondents (token, label, note, created_at, data_json) VALUES (?, ?, ?, ?, ?) RETURNING *",
-            (secrets.token_urlsafe(16), label, note, now(), json.dumps({"name": label}, ensure_ascii=False)), "one")
+            (token, label, note, now(), json.dumps({"name": label}, ensure_ascii=False)), "one")
 
 
 def update_meta(rid: int, label: str, note: str) -> None:
