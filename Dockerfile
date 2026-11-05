@@ -1,6 +1,7 @@
 # 자문의견 요청서 수집 서버
 # 빌드: docker build -t advisory-form .
 # 실행: docker run -p 8768:8768 -v advisory_data:/data -e ADVISORY_ADMIN_PASSWORD=<비밀번호> advisory-form
+# DATABASE_URL 을 주면 /data 대신 PostgreSQL 에 저장한다 (Render 무료 플랜).
 FROM python:3.12-slim
 
 WORKDIR /app

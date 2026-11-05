@@ -1,23 +1,30 @@
 # Render.com 블루프린트 — https://render.com/deploy?repo=<이 저장소 URL>
+# 무료 플랜: 서버 파일은 재시작마다 지워지므로 응답은 무료 Postgres 에 저장한다.
+# 무료 Postgres 는 만든 날부터 30일 뒤 막히고, 14일 뒤 삭제된다 → 링크를 보내기 직전에 배포하고 기한 안에 ZIP 으로 내려받을 것.
+databases:
+  - name: ai-journalism-advisory-db
+    plan: free
+    region: singapore
+    databaseName: advisory
+    user: advisory
+
 services:
   - type: web
     name: ai-journalism-advisory
     runtime: docker
-    plan: starter          # 디스크(영구 저장)는 유료 플랜에서만 지원. free 로 바꾸면 재배포 때 응답이 사라짐
+    plan: free             # 15분 동안 접속이 없으면 잠들고, 다음 접속 때 깨어나는 데 약 1분
     region: singapore
     healthCheckPath: /healthz
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-journalism-advisory-db
+          property: connectionString
       - key: ADVISORY_ADMIN_PASSWORD
         sync: false          # 배포할 때 직접 입력 (관리자 콘솔 비밀번호)
       - key: ADVISORY_SECRET
         generateValue: true  # 관리자 로그인 쿠키 서명용
       - key: ADVISORY_ENC_KEY
         generateValue: true  # 지급 정보·서명 암호화 키. 바꾸면 기존 암호화 자료를 못 읽음
-      - key: ADVISORY_DATA
-        value: /data
       - key: PORT
         value: "8768"
-    disk:
-      name: advisory-data
-      mountPath: /data
-      sizeGB: 1

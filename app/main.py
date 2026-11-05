@@ -34,10 +34,10 @@ TEMPLATE = Template(Path(os.environ.get("ADVISORY_TEMPLATE") or HERE.parent / "t
 FILE_BASE = "자문의견요청서_언론의AI활용연구"
 KST = timezone(timedelta(hours=9))
 
-ADMIN_PASSWORD = store._env_or_file(
+ADMIN_PASSWORD = store._env_or_stored(
     "ADVISORY_ADMIN_PASSWORD", "admin_password.txt", lambda: secrets.token_urlsafe(9))
 if not os.environ.get("ADVISORY_ADMIN_PASSWORD"):
-    print(f"[advisory] ADVISORY_ADMIN_PASSWORD 가 없어 {store.DATA_DIR / 'admin_password.txt'} 의 비밀번호를 씁니다.",
+    print(f"[advisory] ADVISORY_ADMIN_PASSWORD 가 없어 {store.stored_where('admin_password.txt')} 의 비밀번호를 씁니다.",
           flush=True)
 
 COOKIE = "advisory_admin"

@@ -38,7 +38,11 @@ redcarpet 의 `.claude/launch.json` 에는 `advisory-form` 으로 등록돼 있�
 | `ADVISORY_ADMIN_PASSWORD` | 관리자 콘솔 비밀번호 |
 | `ADVISORY_SECRET` | 로그인 쿠키 서명 키 |
 | `ADVISORY_ENC_KEY` | 지급 정보·서명 암호화 키 (바꾸면 기존 자료를 못 읽음) |
-| `ADVISORY_DATA` | DB·키 파일 폴더 (기본 `./data`, Render 는 `/data` 디스크) |
+| `DATABASE_URL` | 있으면 PostgreSQL 에 저장 (Render 무료 플랜). 없으면 `ADVISORY_DATA` 의 SQLite |
+| `ADVISORY_DATA` | SQLite DB·키 파일 폴더 (기본 `./data`) |
+
+`ADVISORY_SECRET`·`ADVISORY_ENC_KEY`·`ADVISORY_ADMIN_PASSWORD` 가 없으면 만들어 두고 쓴다.
+PostgreSQL 이면 DB 의 `kv` 표에, SQLite 면 `ADVISORY_DATA` 폴더의 파일에 둔다.
 
 ## 서식을 바꿀 때
 
@@ -48,5 +52,9 @@ redcarpet 의 `.claude/launch.json` 에는 `advisory-form` 으로 등록돼 있�
 
 ## 배포 (Render)
 
-`render.yaml` 블루프린트. Starter 플랜 + 1GB 디스크(`/data`). 공개 저장소를 `https://render.com/deploy?repo=<URL>` 로
+`render.yaml` 블루프린트: **무료 웹 서비스 + 무료 Postgres**. 공개 저장소를 `https://render.com/deploy?repo=<URL>` 로
 연결하고, 배포 화면에서 `ADVISORY_ADMIN_PASSWORD` 만 입력하면 된다.
+
+- 무료 서비스는 15분 동안 접속이 없으면 잠들고, 다음 접속 때 깨어나는 데 약 1분 걸린다.
+- 무료 Postgres 는 **만든 날부터 30일 뒤 막히고, 14일 뒤 삭제**된다. 링크를 보내기 직전에 배포하고,
+  기한 안에 관리자 콘솔에서 ZIP 으로 모두 내려받는다. 더 오래 쓰려면 DB 를 유료로 올린다(자료 유지).

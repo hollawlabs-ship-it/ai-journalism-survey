@@ -4,3 +4,4 @@ itsdangerous==2.2.0
 cryptography==50.0.2
 pillow==13.0.0
 python-multipart==0.0.33
+psycopg[binary]==3.3.8
